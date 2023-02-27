@@ -88,7 +88,7 @@ def echo_for_loop_counter(start,end,count,loop_string='Loop state'):
 
 
 #=== Minimum functions needed to interact with the grids as casaimages (read, write etc.)
-def create_CIM_obejcet(cimpath):
+def create_CIM_object(cimpath):
     """This is a solution I use to interact with MS as well. Should solve avoiding
     opening images multiple times.
 
@@ -131,7 +131,7 @@ def check_input_grids(visgrid, psfgrid, pcfgrid):
         - equity of stokes frame AND increment AND unit
         - equity of linear increments AND units
 
-    NOTE: the coe does not check if any of the axis are covering the same physical
+    NOTE: the code does not check if any of the axis are covering the same physical
     range! Ergo, two grids with same xHz channel resolutions and 100 channels, but
     covering different bandwidth will pass this test!
 
@@ -139,7 +139,7 @@ def check_input_grids(visgrid, psfgrid, pcfgrid):
 
     This is not important for now, and would just slow the code a bit...
 
-    NOTE: code oly works with StokesI images
+    NOTE: code only works with StokesI images
 
     TO DO: implement stokes check
 
@@ -163,9 +163,9 @@ def check_input_grids(visgrid, psfgrid, pcfgrid):
 
     """
 
-    vis_CIM = create_CIM_obejcet(visgrid)
-    psf_CIM = create_CIM_obejcet(psfgrid)
-    pcf_CIM = create_CIM_obejcet(pcfgrid)   
+    vis_CIM = create_CIM_object(visgrid)
+    psf_CIM = create_CIM_object(psfgrid)
+    pcf_CIM = create_CIM_object(pcfgrid)   
 
     #Check for shape
     if (vis_CIM.shape() != psf_CIM.shape()) or (vis_CIM.shape() != pcf_CIM.shape()):
@@ -245,7 +245,7 @@ def save_CIM_object_from_data_and_template(cim_data, new_cimpath, template_cimpa
     if os.path.isdir(new_cimpath) and overwrite == False: 
         raise TypeError('Output casa image already exist, and the overwrite parameters is set to False!')
 
-    template_CIM = create_CIM_obejcet(template_cimpath)
+    template_CIM = create_CIM_object(template_cimpath)
 
     if np.shape(cim_data) != tuple(template_CIM.shape()):
         raise ValueError('Input data has different shape than the template casa image!')
@@ -512,9 +512,9 @@ if __name__ == "__main__":
     vis_grid_path = grid_dir_path + visgrid
 
     #Open images
-    pcf_CIM = create_CIM_obejcet(cimpath=pcf_grid_path)
-    #psf_CIM = create_CIM_obejcet(cimpath=psf_grid_path)
-    vis_CIM = create_CIM_obejcet(cimpath=vis_grid_path)
+    pcf_CIM = create_CIM_object(cimpath=pcf_grid_path)
+    #psf_CIM = create_CIM_object(cimpath=psf_grid_path)
+    vis_CIM = create_CIM_object(cimpath=vis_grid_path)
 
     """
     vis_example_map = np.fabs(np.abs(vis_CIM.getdata()[0,0,...]))
