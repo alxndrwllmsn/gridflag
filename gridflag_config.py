@@ -1,11 +1,9 @@
-"""Simple script to prepare DINGO gridded visibilities for flagging.
+# Simple script to prepare DINGO gridded visibilities for flagging.
 
-Some notes:
+# Some notes:
 
-    - The casaimage indexing is: [channel, pol, ra, dec]
-    - the last two axis is saved as a 'linear' object and so not as 'direction'
-
-"""
+#     - The casaimage indexing is: [channel, pol, ra, dec]
+#     - the last two axis is saved as a 'linear' object and so not as 'direction'
 
 import sys, os
 import logging
@@ -110,7 +108,7 @@ def create_CIM_object(cimpath):
     # solution
     CIM_type_tmp = casaimage.image(imagename='',shape=np.ones(1))
 
-    #If already an image
+    # If already an image
     if isinstance(cimpath, type(CIM_type_tmp)):
         return cimpath
 
@@ -167,30 +165,30 @@ def check_input_grids(visgrid, psfgrid, pcfgrid):
     psf_CIM = create_CIM_object(psfgrid)
     pcf_CIM = create_CIM_object(pcfgrid)   
 
-    #Check for shape
+    # Check for shape
     if (vis_CIM.shape() != psf_CIM.shape()) or (vis_CIM.shape() != pcf_CIM.shape()):
         raise ValueError('Input grids have different shape!')
 
     
-    #Check if the cubes are 4 dimensional (we know they are the same shape)
+    # Check if the cubes are 4 dimensional (we know they are the same shape)
     if vis_CIM.ndim() != 4:
         raise NotImplementedError('Code only works with casaimages of 4 axis!')
 
-    #Read in the coordinate info for the images
+    # Read in the coordinate info for the images
     vis_coords = vis_CIM.coordinates()
     psf_coords = psf_CIM.coordinates()
     pcf_coords = pcf_CIM.coordinates()
 
     #=== Define some check functions to have a more compact code x+y===============
     def check_increment(visGC, psfGC, pcfGC, axis):
-        #Expected inputs are float, list and numpy array so I need to add any
+        # Expected inputs are float, list and numpy array so I need to add any
         if np.any(visGC[axis].get_increment()) != np.any(psfGC[axis].get_increment()) \
         or np.any(visGC[axis].get_increment()) != np.any(pcfGC[axis].get_increment()):
             raise ValueError('Input grids have different {0:s} resolution!'.format(axis))
         return 0
 
     def check_unit(visGC, psfGC, pcfGC, axis):
-        #Some reason adding np.any() breaks this code, but it works without it just fine
+        # Some reason adding np.any() breaks this code, but it works without it just fine
         if visGC[axis].get_unit() != psfGC[axis].get_unit() \
         or visGC[axis].get_unit() != pcfGC[axis].get_unit():
             raise ValueError('Input grids have different {0:s} unit!'.format(axis))
@@ -254,7 +252,7 @@ def save_CIM_object_from_data_and_template(cim_data, new_cimpath, template_cimpa
 
     coordsys = template_CIM.coordinates()
 
-    #Create the output image
+    # Create the output image
     output_cim = casaimage.image(new_cimpath,
                     coordsys=coordsys,
                     values=cim_data,
@@ -297,83 +295,83 @@ def adaptive_convolutional_smearing(initial_pcf_grid_array,
 
 
     """
-    #Create the output array
+    # Create the output array
     smeared_grid = np.zeros(np.shape(initial_pcf_grid_array))
 
-    #Split the data to real and imaginary part
+    # Split the data to real and imaginary part
     pcf_real = np.real(initial_pcf_grid_array[:,0,...])
     pcf_imag = np.imag(initial_pcf_grid_array[:,0,...])
 
-    #Generate a matrix with the kernel sizes
-    #pcf_kernel_sizes = np.fabs(np.divide(pcf_imag,pcf_real, where=pcf_real!=0))
+    # Generate a matrix with the kernel sizes
+    # pcf_kernel_sizes = np.fabs(np.divide(pcf_imag,pcf_real, where=pcf_real!=0))
 
-    #Get the maximum projection kernel (per channel)
-    #Array containing the max kernels per channel rounded to % precision to get rid
+    # Get the maximum projection kernel (per channel)
+    # Array containing the max kernels per channel rounded to % precision to get rid
     # of numerical errors, then a ceil() is called (i.e 1.1 => 2 ; but 1.00001 => 1)
-    ###C_max_array = np.ceil(np.round(np.amax(pcf_kernel_sizes, axis=(1,2)),2))
-    #C_max_array = np.ceil(np.amax(pcf_kernel_sizes, axis=(1,2)))
+    # C_max_array = np.ceil(np.round(np.amax(pcf_kernel_sizes, axis=(1,2)),2))
+    # C_max_array = np.ceil(np.amax(pcf_kernel_sizes, axis=(1,2)))
 
-    #Perform the operations by channel
+    # Perform the operations by channel
     for i in range(0,np.shape(pcf_imag)[0]):
-        #The maximum kenel width in the given channel
-        #boxWidth = C_max_array[i]
+        # The maximum kenel width in the given channel
+        # boxWidth = C_max_array[i]
 
         pcf_kernel_sizes = np.fabs(np.divide(pcf_imag[i,...],
                                             pcf_real[i,...],
                                             where=pcf_real[i,...]!=0))
 
-        #Plot the input pcf grid
+        # Plot the input pcf grid
         im = plt.matshow(pcf_kernel_sizes)
         plt.colorbar(im)
         plt.show()  
 
-        #OPTIONAL: this should be tested
+        # OPTIONAL: this should be tested
 
-        pcf_kernel_sizes = np.ceil(pcf_kernel_sizes) #correcting for numerics
+        pcf_kernel_sizes = np.ceil(pcf_kernel_sizes) # correcting for numerics
 
-        #Apply correction for the kernel sizes (to whole grid)
-        #pcf_kernel_sizes[pcf_kernel_sizes != 0] += anti_aliasing_kernel_size
+        # Apply correction for the kernel sizes (to whole grid)
+        # pcf_kernel_sizes[pcf_kernel_sizes != 0] += anti_aliasing_kernel_size
 
-        #Apply correction, but only for the grid cells with < anti_aliasing_kernel_size
+        # Apply correction, but only for the grid cells with < anti_aliasing_kernel_size
         pcf_kernel_sizes[(pcf_kernel_sizes != 0) & (pcf_kernel_sizes < anti_aliasing_kernel_size)] = \
         anti_aliasing_kernel_size + pcf_kernel_sizes[(pcf_kernel_sizes != 0) & (pcf_kernel_sizes < anti_aliasing_kernel_size)]
 
 
-        #Get the max kernel size for the smearing
+        # Get the max kernel size for the smearing
         boxWidth = np.ceil(np.amax(pcf_kernel_sizes))
         
         logger.info('Max kernel size: {0:.2f}'.format(float(boxWidth)))
         logger.info('Min kernel size: {0:.2f}'.format(np.amin(pcf_kernel_sizes[pcf_kernel_sizes != 0.])))
 
-        #Set boxwidt to minimum kernel size
-        #if boxWidth < anti_aliasing_kernel_size:
-        ##    boxWidth = anti_aliasing_kernel_size
+        # Set boxwidt to minimum kernel size
+        # if boxWidth < anti_aliasing_kernel_size:
+        #    boxWidth = anti_aliasing_kernel_size
         #    boxWidth = anti_aliasing_kernel_size + bowWidth
         #    logger.info('Max kernel size: {0:f}'.format(int(boxWidth)))
 
 
-        #Get the local maximum convolutional grid matrix (this supposed to be fast)
-        #This step could introduce rounding errors....
+        # Get the local maximum convolutional grid matrix (this supposed to be fast)
+        # This step could introduce rounding errors....
         C_max_local_matrix = ndimage.maximum_filter(pcf_kernel_sizes[...],
                                 size=boxWidth,
                                 mode='constant',
                                 cval=0)
 
-        #Remove the rounding errors
+        # Remove the rounding errors
         C_max_local_matrix = np.round(C_max_local_matrix)
 
-        #Now loop trough the pixels of the sub-image assuming that no points are
+        # Now loop trough the pixels of the sub-image assuming that no points are
         # gridded near the edges
 
-        extra = 2. #Some helper value
+        extra = 2. # Some helper value
 
-        #The Wiener-filtering algorithm online that I try to replicate:
-        #https://bitbucket.csiro.au/projects/ASKAPSDP/repos/yandasoft/browse/askap/measurementequation/WienerPreconditioner.cc#65,67,75,84,90,143,600,607,610,612
+        # The Wiener-filtering algorithm online that I try to replicate:
+        # https://bitbucket.csiro.au/projects/ASKAPSDP/repos/yandasoft/browse/askap/measurementequation/WienerPreconditioner.cc#65,67,75,84,90,143,600,607,610,612
 
-        #NOTE that I am loopint in order of x first, then y unlike the online code
+        # NOTE that I am loopint in order of x first, then y unlike the online code
 
         loop_count = 0
-        #Loop trough the grid cells
+        # Loop trough the grid cells
         for x in range(int(extra*boxWidth/2), np.subtract(np.shape(pcf_real)[1],int(extra*boxWidth/2))):
 
             boxStart0 = int(np.floor(x - boxWidth/2))
@@ -389,7 +387,7 @@ def adaptive_convolutional_smearing(initial_pcf_grid_array,
                 region_sum = 0.
                 local_count = 0
 
-                #Get the local max kernel manually
+                # Get the local max kernel manually
                 boxStart1 = int(np.floor(y - boxWidth/2))
 
                 kernelW = 0.
@@ -400,25 +398,25 @@ def adaptive_convolutional_smearing(initial_pcf_grid_array,
                 kernelW = np.round(kernelW)
 
                 if kernelW != C_max_local_matrix[x,y]:
-                    #print(kernelW, C_max_local_matrix[x,y])
+                    # print(kernelW, C_max_local_matrix[x,y])
 
                     kernelW = np.amax([kernelW, C_max_local_matrix[x,y]])
 
 
-                #If the local max kernel size is 0 pass
+                # If the local max kernel size is 0 pass
                 if kernelW > 0:
-                    #kernelWidth = C_max_local_matrix[x,y]
+                    # kernelWidth = C_max_local_matrix[x,y]
                     kernelWidth = kernelW
 
                     regionWidth = 1 + extra * (kernelWidth - 1)
 
-                    boxStart0 = int(np.floor(x - regionWidth/2)) #Added floor
+                    boxStart0 = int(np.floor(x - regionWidth/2))  # Added floor
                     boxStart1 = int(np.floor(y - regionWidth/2))
 
                     localRadiusSq = 0.25 * kernelWidth*kernelWidth
                     regionRadiusSq = 0.25 * regionWidth*regionWidth
 
-                    #Loop trough the sub-box
+                    # Loop trough the sub-box
                     for xb in range(boxStart0, int(boxStart0 + regionWidth)):
                         dx2 = np.power(xb - boxStart0 - regionWidth/2, 2)
 
@@ -431,27 +429,27 @@ def adaptive_convolutional_smearing(initial_pcf_grid_array,
                                 rsq = dx2 + dy2
 
 
-                                #This part should be different for the smearing, but good for the Wiener-filetring
+                                # This part should be different for the smearing, but good for the Wiener-filetring
                                 if rsq <= regionRadiusSq:
 
                                     region_count += 1
                                     region_sum += val
-                                    #The rounding (?) is new compared to the C++ code (?)
+                                    # The rounding (?) is new compared to the C++ code (?)
 
-                                    #print(rsq, localRadiusSq) #There are possibly some errors here
+                                    # print(rsq, localRadiusSq) #There are possibly some errors here
 
-                                    #If the point is in the local kernel radius (slightly
+                                    # If the point is in the local kernel radius (slightly
                                     # larger radius, actually)
                                     if rsq <= localRadiusSq:
                                         local_count += 1
 
                 if local_count > 0:
-                    #Now add the region_sum to the new array
+                    # Now add the region_sum to the new array
                     smeared_grid[i,0,x,y] = region_sum/region_count
 
-        #Now check if the resultant grid occupancy is the same as the example grid
+        # Now check if the resultant grid occupancy is the same as the example grid
 
-        #Plot smeared grid
+        # Plot smeared grid
         im = plt.matshow(smeared_grid[i,0,...], cmap='gray_r')
         plt.colorbar(im)
         plt.show()
@@ -459,22 +457,18 @@ def adaptive_convolutional_smearing(initial_pcf_grid_array,
         reference_grid_occupancy = np.where(np.abs(reference_grid_array[i,0,...]) > 0.0, 1, 0)
         smeared_pcf_grid_occupancy = copy.deepcopy(np.where(smeared_grid[i,0,...] > 0.0, 2, 0))
 
-        #I used to do this for testing, but should be better to return the smeared grid maybe...
+        # I used to do this for testing, but should be better to return the smeared grid maybe...
         diff_grid = np.subtract(reference_grid_occupancy,smeared_pcf_grid_occupancy)
 
         im = plt.matshow(diff_grid, cmap='Set3')
         plt.colorbar(im)
         plt.show()        
 
-        #print(np.unique(E))
-
-        exit()
-
-    pass #I have no idea if we need this
+        # print(np.unique(E))
 
 
 
-#TO DO: add a put_data_to_cim function which writes a 4D array to an image ondisc
+# TO DO: add a put_data_to_cim function which writes a 4D array to an image ondisc
 # The plan is: read in the images and create the final images (vis, psf) with
 # empty complex arrays. Then read in the input data to arrays and delete the in-
 # memory images to free up memory space. Perform the inverse smearing and write
@@ -495,100 +489,69 @@ def adaptive_convolutional_smearing(initial_pcf_grid_array,
 
 # === MAIN ===
 if __name__ == "__main__":
-    #main()
-
-    #pcfgrid = 'pcfgrid.range2_SB10991.dumpgrid'
-    #psfgrid = 'psfgrid.range2_SB10991.dumpgrid'
-    #visgrid = 'visgrid.range2_SB10991.dumpgrid'
 
     pcfgrid = 'pcfgrid.dal_test0.dumpgrid'
-    #psfgrid = 'psfgrid.dal_test0.dumpgrid'
+    psfgrid = 'psfgrid.dal_test0.dumpgrid'
     visgrid = 'visgrid.dal_test0.dumpgrid'
 
     grid_dir_path = '/home/krozgonyi/Desktop/playground/grid_flagging/blob/'
 
     pcf_grid_path = grid_dir_path + pcfgrid
-    #psf_grid_path = grid_dir_path + psfgrid
+    psf_grid_path = grid_dir_path + psfgrid
     vis_grid_path = grid_dir_path + visgrid
 
-    #Open images
+    # Open images
     pcf_CIM = create_CIM_object(cimpath=pcf_grid_path)
-    #psf_CIM = create_CIM_object(cimpath=psf_grid_path)
+    psf_CIM = create_CIM_object(cimpath=psf_grid_path)
     vis_CIM = create_CIM_object(cimpath=vis_grid_path)
 
-    """
-    vis_example_map = np.fabs(np.abs(vis_CIM.getdata()[0,0,...]))
-    pcf_example_map = np.fabs(np.real(pcf_CIM.getdata()[0,0,...]))
+    
+    # vis_example_map = np.fabs(np.abs(vis_CIM.getdata()[0,0,...]))
+    # pcf_example_map = np.fabs(np.real(pcf_CIM.getdata()[0,0,...]))
 
 
-    print(np.sum(np.ones(np.shape(vis_example_map))[vis_example_map != 0]))
-    print(np.sum(np.ones(np.shape(vis_example_map))[pcf_example_map != 0]))
+    # print(np.sum(np.ones(np.shape(vis_example_map))[vis_example_map != 0]))
+    # print(np.sum(np.ones(np.shape(vis_example_map))[pcf_example_map != 0]))
 
-    im = plt.matshow(vis_example_map - pcf_example_map, cmap=plt.cm.binary)
-    plt.colorbar(im)
-    plt.show()
+    # im = plt.matshow(vis_example_map - pcf_example_map, cmap=plt.cm.binary)
+    # plt.colorbar(im)
+    # plt.show()
 
-    del vis_CIM, vis_example_map
+    # del vis_CIM, vis_example_map
 
-    exit()  
-    """
+    # exit()  
+    
 
-    #del vis_CIM
+    # del vis_CIM
 
-    #check_input_grids(vis_CIM, psf_CIM, pcf_CIM)
+    # check_input_grids(vis_CIM, psf_CIM, pcf_CIM)
 
     pcfGD = pcf_CIM.getdata()
     visGD = vis_CIM.getdata()
 
     del pcf_CIM, vis_CIM
 
-    #This bit finds the min/max kernels in the whole pcf grid cube (no correction for the anti-aliasing kernel)
-    """
-    kernel_max = 0.
-    kernel_min = 10000.
+    # This bit finds the min/max kernels in the whole pcf grid cube (no correction for the anti-aliasing kernel)
+    
+    # kernel_max = 0.
+    # kernel_min = 10000.
 
-    #print(np.shape(pcfGD))
-    for i in range(0,np.shape(pcfGD)[2]):
-        for j in range(0,np.shape(pcfGD)[3]):
+    # #print(np.shape(pcfGD))
+    # for i in range(0,np.shape(pcfGD)[2]):
+    #     for j in range(0,np.shape(pcfGD)[3]):
 
-            if pcfGD[0,0,i,j] != 0.+0.j:
+    #         if pcfGD[0,0,i,j] != 0.+0.j:
 
-                kernel_size =  np.fabs(np.divide(np.imag(pcfGD[0,0,i,j]),np.real(pcfGD[0,0,i,j])))
-                #print(pcfGD[0,0,i,j],kernel_size)
+    #             kernel_size =  np.fabs(np.divide(np.imag(pcfGD[0,0,i,j]),np.real(pcfGD[0,0,i,j])))
+    #             #print(pcfGD[0,0,i,j],kernel_size)
 
-                if kernel_size  > kernel_max:
-                    kernel_max = kernel_size
+    #             if kernel_size  > kernel_max:
+    #                 kernel_max = kernel_size
 
-                if kernel_size < kernel_min:
-                    kernel_min = kernel_size
+    #             if kernel_size < kernel_min:
+    #                 kernel_min = kernel_size
 
-    print(kernel_max, kernel_min)
-    """
+    # print(kernel_max, kernel_min)
+
 
     adaptive_convolutional_smearing(pcfGD, visGD, echo_counter=True, anti_aliasing_kernel_size=0)
-
-    exit()
-
-    #Below is some junk, I played with back in the day + saving the output
-
-    #print(np.shape(np.zeros(vis_CIM.shape())))
-
-    save_CIM_object_from_data_and_template(np.zeros(pcf_CIM.shape()),
-                grid_dir_path+'test.grid', vis_CIM, overwrite=True)
-
-
-    #plt.imshow(np.real(test_CIM.getdata()[0,0,...]), cmap='gray_r')
-    #plt.show()
-
-
-    #import matplotlib.colors as colors
-
-    #divnorm = colors.TwoSlopeNorm(vmin=np.min(np.imag(pcfGD[0,0,...])),
-    #                    vcenter=0, vmax=np.max(np.imag(pcfGD[0,0,...])))
-
-    ##plt.imshow(np.real(pcfGD[0,0,...]), cmap='gray_r')
-    #plt.imshow(np.imag(pcfGD[0,0,...]), cmap='coolwarm', norm=divnorm)
-    ##plt.hist(np.real(pcfGD[0,0,...]).flatten(), bins=range(1,100))
-    ##plt.hist(np.imag(pcfGD[0,0,...]).flatten(), bins=range(1,100))
-    ##plt.hist(np.imag(pcfGD[0,0,...]).flatten(), bins=range(-100,-1))
-    #plt.show()
