@@ -34,7 +34,7 @@ logger.addHandler(handler)
 #=== Functions ===
 #*******************************************************************************
 #=== Some helper functions to make life easier
-def echo_for_loop_counter(start,end,count,loop_string='Loop state'):
+def echo_for_loop_counter(start: str,end: str,count: int,loop_string: str='Loop state'):
     """Simple routine to print the status of a for loop to the stdout and update
     it dynamically.
     
@@ -45,8 +45,9 @@ def echo_for_loop_counter(start,end,count,loop_string='Loop state'):
     NOTE this code is not compatible with the logging module
     
     NOTE no other print statements should be in the for loop (!)
-    Parameters:
-    ===========
+    
+    Parameters
+    ----------
     start: int
         The start value of the loop
     end: int
@@ -56,8 +57,9 @@ def echo_for_loop_counter(start,end,count,loop_string='Loop state'):
     loop string: str
         A string to name the loop. The counter is printed in the following format:
         `loop string`: [===.......] x% y/zzzz
-    Returns:
-    ========
+        
+    Returns
+    -------
         Prints the loop status to stderr
     """
 
@@ -86,7 +88,7 @@ def echo_for_loop_counter(start,end,count,loop_string='Loop state'):
 
 
 #=== Minimum functions needed to interact with the grids as casaimages (read, write etc.)
-def create_CIM_object(cimpath):
+def create_CIM_object(cimpath: str) -> casaimage.image.image:
     """This is a solution I use to interact with MS as well. Should solve avoiding
     opening images multiple times.
 
@@ -119,7 +121,7 @@ def create_CIM_object(cimpath):
 
         return CIM
 
-def check_input_grids(visgrid, psfgrid, pcfgrid):
+def check_input_grids(visgrid: casaimage.image.image, psfgrid: casaimage.image.image, pcfgrid: casaimage.image.image):
     """Simple rouitine to perform a threeway check on the input grids.
 
     The code check for:
@@ -262,10 +264,10 @@ def save_CIM_object_from_data_and_template(cim_data, new_cimpath, template_cimpa
 
     return 0
 
-def adaptive_convolutional_smearing(initial_pcf_grid_array,
-                                    reference_grid_array,
-                                    echo_counter=False,
-                                    anti_aliasing_kernel_size=7):
+def adaptive_convolutional_smearing(initial_pcf_grid_array: np.ndarray,
+                                    reference_grid_array: np.ndarray,
+                                    echo_counter: bool=False,
+                                    anti_aliasing_kernel_size: int=7):
     """The preparation, running and checking of the adaptive convolutional smearing used
     to create the Wiener-filters for weighting, and basically to estimate the
     smeared weight-density distribution.
@@ -345,10 +347,26 @@ def adaptive_convolutional_smearing(initial_pcf_grid_array,
         plt.show()        
 
 
-def smearing_slow(pcf, pcf_kernel_sizes, boxWidth, echo_counter):
+def smearing_slow(pcf: np.ndarray, pcf_kernel_sizes: np.ndarray, boxWidth: np.ndarray, echo_counter: bool) -> np.ndarray:
     """The core algorithm (non-vectorised) performing the the adaptive convolutional smearing used
     to create the Wiener-filters for weighting, and basically to estimate the
     smeared weight-density distribution.
+    
+    Parameters
+    ----------
+    pcf: np.ndarray
+        The input pcf array for a single channel
+    pcf_kernel_sizes: np.ndarray
+        The corrected kernel sizes for the pcf
+    boxWidth: np.ndarray
+        A single valued array with the current channel's box width
+    echo_counter: bool
+        A switch to enable the progress counter
+        
+    Returns
+    -------
+    smeared_grid: np.ndarray
+        The smeared grid for a single channel
     """
     smeared_grid = np.zeros(pcf.shape)
     
@@ -471,7 +489,25 @@ def smearing_slow(pcf, pcf_kernel_sizes, boxWidth, echo_counter):
     return smeared_grid
 
     
-def smearing_fast(pcf, pcf_kernel_sizes, box_width):
+def smearing_fast(pcf: np.ndarray, pcf_kernel_sizes: np.ndarray, box_width: np.ndarray):
+    """The core algorithm (vectorised) performing the the adaptive convolutional smearing used
+    to create the Wiener-filters for weighting, and basically to estimate the
+    smeared weight-density distribution.
+    
+    Parameters
+    ----------
+    pcf: np.ndarray
+        The input pcf array for a single channel
+    pcf_kernel_sizes: np.ndarray
+        The corrected kernel sizes for the pcf
+    boxWidth: np.ndarray
+        A single valued array with the current channel's box width
+        
+    Returns
+    -------
+    smeared_grid: np.ndarray
+        The smeared grid for a single channel
+    """
     smeared_grid = np.zeros(pcf.shape)
     xrange = np.array([2*box_width/2, pcf.shape[0] - 2*box_width/2], dtype=np.int32)
     yrange = np.array([2*box_width/2, pcf.shape[1] - 2*box_width/2], dtype=np.int32)
@@ -536,7 +572,15 @@ def smearing_fast(pcf, pcf_kernel_sizes, box_width):
     return smeared_grid
 
 
-def plot_array(array):
+def plot_array(array: np.ndarray):
+    """A helper script to assist in debugging arrays by plotting either a line
+    graph (1d) or a matshow (2d)
+    
+    Paramters
+    ---------
+    array: np.ndarray
+        The array to be plot
+    """
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(111)
     if np.ndim(array) == 1:
@@ -545,6 +589,7 @@ def plot_array(array):
         ax.matshow(array)
     else:
         raise Exception("The array has neither 1 or 2 dimensions, can't plot")
+    plt.show()
 
 
 # TO DO: add a put_data_to_cim function which writes a 4D array to an image ondisc
