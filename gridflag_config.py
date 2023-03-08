@@ -88,7 +88,7 @@ def echo_for_loop_counter(start: str,end: str,count: int,loop_string: str='Loop 
 
 
 #=== Minimum functions needed to interact with the grids as casaimages (read, write etc.)
-def create_CIM_object(cimpath: str) -> casaimage.image.image:
+def create_CIM_object(cimpath: str) -> casaimage.image:
     """This is a solution I use to interact with MS as well. Should solve avoiding
     opening images multiple times.
 
@@ -121,7 +121,7 @@ def create_CIM_object(cimpath: str) -> casaimage.image.image:
 
         return CIM
 
-def check_input_grids(visgrid: casaimage.image.image, psfgrid: casaimage.image.image, pcfgrid: casaimage.image.image):
+def check_input_grids(visgrid: casaimage.image, psfgrid: casaimage.image, pcfgrid: casaimage.image):
     """Simple rouitine to perform a threeway check on the input grids.
 
     The code check for:
@@ -393,7 +393,7 @@ def smearing_slow(pcf: np.ndarray, pcf_kernel_sizes: np.ndarray, boxWidth: np.nd
     # Get the local maximum convolutional grid matrix (this supposed to be fast)
     # This step could introduce rounding errors....
     C_max_local_matrix = ndimage.maximum_filter(pcf_kernel_sizes[...],
-                            size=boxWidth,
+                            size=(boxWidth, boxWidth),
                             mode='constant',
                             cval=0)
 
@@ -517,7 +517,7 @@ def smearing_fast(pcf: np.ndarray, pcf_kernel_sizes: np.ndarray, box_width: np.n
     rxk, ryk = np.mgrid[0:box_width, 0:box_width]
     xbk = ((x-box_width/2)[..., None, None] + rxk[None, None, ...]).astype(np.int32)
     ybk = ((y-box_width/2)[..., None, None] + ryk[None, None, ...]).astype(np.int32)
-    kernelW = np.round(np.max(pcf_kernel_sizes[xbk, ybk]))
+    kernelW = np.round(np.max(pcf_kernel_sizes[xbk, ybk], axis=(2,3)))
     max_filter = ndimage.maximum_filter(pcf_kernel_sizes,
                                         size=(box_width, box_width),
                                         mode='constant',
@@ -614,7 +614,7 @@ def plot_array(array: np.ndarray):
 # === MAIN ===
 if __name__ == "__main__":
     
-    fast = True
+    fast = False
 
     pcfgrid = 'pcfgrid.dal_test0.dumpgrid'
     psfgrid = 'psfgrid.dal_test0.dumpgrid'
