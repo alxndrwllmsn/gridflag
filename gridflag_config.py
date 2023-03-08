@@ -612,7 +612,7 @@ def get_args() -> ap.Namespace:
                            help= "The path to the pcf grid (use -d to specify working directory).")
     argparser.add_argument("-d", "--directory", 
                            help="The path to the working directory, all other specified paths will be relative to this one.")
-    argparser.add_argument("-f", "fast", 
+    argparser.add_argument("-f", "--fast", 
                            action='store_true', 
                            help="Use this flag to use the fast (vectorised) algorithm.")
     args = argparser.parse_args()
