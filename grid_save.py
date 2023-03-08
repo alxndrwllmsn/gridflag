@@ -43,9 +43,9 @@ if __name__ == '__main__':
         psfpath = args.psf_grid
         pcfpath = args.pcf_grid
     else:
-        vispath = os.path.join(args.directory, "visgrid.dal_test0.dumpgrid")
-        psfpath = os.path.join(args.directory, "psfgrid.dal_test0.dumpgrid")
-        pcfpath = os.path.join(args.directory, "pcfgrid.dal_test0.dumpgrid")
+        vispath = os.path.join(args.directory, args.visibility_grid)
+        psfpath = os.path.join(args.directory, args.psf_grid)
+        pcfpath = os.path.join(args.directory, args.pcf_grid)
     
     for path, outpath in ((vispath, "vis.npy"), (psfpath, "psf.npy"), (pcfpath, "pcf.npy")):
         write_npy_grids(path, outpath)

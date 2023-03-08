@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 
 from casacore import images as casaimage
 
+import argparse as ap
+
 #=== Set up logging
 logger = logging.getLogger()
 
@@ -319,7 +321,7 @@ def adaptive_convolutional_smearing(initial_pcf_grid_array: np.ndarray,
     for i in range(0,np.shape(initial_pcf_grid_array)[0]):
         
         # do the smearing
-        if fast:
+        if args.fast:
             smeared_grid[i,0,...] = smearing_fast(initial_pcf_grid_array[i, 0],
                                                   pcf_kernel_sizes[i,0],
                                                   boxWidth[i])
@@ -573,7 +575,7 @@ def smearing_fast(pcf: np.ndarray, pcf_kernel_sizes: np.ndarray, box_width: np.n
 
 
 def plot_array(array: np.ndarray):
-    """A helper script to assist in debugging arrays by plotting either a line
+    """A helper function to assist in debugging arrays by plotting either a line
     graph (1d) or a matshow (2d)
     
     Paramters
@@ -590,6 +592,31 @@ def plot_array(array: np.ndarray):
     else:
         raise Exception("The array has neither 1 or 2 dimensions, can't plot")
     plt.show()
+    
+    
+def get_args() -> ap.Namespace:
+    """Encapsulates the argument parser
+    
+    Returns
+    -------
+    args: ap.Namespace
+        The command line arguments
+    """
+    
+    argparser = ap.ArgumentParser()
+    argparser.add_argument("visibility_grid", 
+                           help= "The path to the visibility grid (use -d to specify working directory).")
+    argparser.add_argument("psf_grid", 
+                           help= "The path to the psf grid (use -d to specify working directory).")
+    argparser.add_argument("pcf_grid", 
+                           help= "The path to the pcf grid (use -d to specify working directory).")
+    argparser.add_argument("-d", "--directory", 
+                           help="The path to the working directory, all other specified paths will be relative to this one.")
+    argparser.add_argument("-f", "fast", 
+                           action='store_true', 
+                           help="Use this flag to use the fast (vectorised) algorithm.")
+    args = argparser.parse_args()
+    return args
 
 
 # TO DO: add a put_data_to_cim function which writes a 4D array to an image ondisc
@@ -613,23 +640,21 @@ def plot_array(array: np.ndarray):
 
 # === MAIN ===
 if __name__ == "__main__":
+    args = get_args()
     
-    fast = False
-
-    pcfgrid = 'pcfgrid.dal_test0.dumpgrid'
-    psfgrid = 'psfgrid.dal_test0.dumpgrid'
-    visgrid = 'visgrid.dal_test0.dumpgrid'
-
-    grid_dir_path = '/Users/00090336/Data/gridflagtest/'
-
-    pcf_grid_path = grid_dir_path + pcfgrid
-    psf_grid_path = grid_dir_path + psfgrid
-    vis_grid_path = grid_dir_path + visgrid
+    if args.directory is None:
+        vispath = args.visibility_grid
+        psfpath = args.psf_grid
+        pcfpath = args.pcf_grid
+    else:
+        vispath = os.path.join(args.directory, args.visibility_grid)
+        psfpath = os.path.join(args.directory, args.psf_grid)
+        pcfpath = os.path.join(args.directory, args.pcf_grid)
 
     # Open images
-    pcf_CIM = create_CIM_object(cimpath=pcf_grid_path)
-    psf_CIM = create_CIM_object(cimpath=psf_grid_path)
-    vis_CIM = create_CIM_object(cimpath=vis_grid_path)
+    pcf_CIM = create_CIM_object(cimpath=pcfpath)
+    psf_CIM = create_CIM_object(cimpath=psfpath)
+    vis_CIM = create_CIM_object(cimpath=vispath)
 
     
     # vis_example_map = np.fabs(np.abs(vis_CIM.getdata()[0,0,...]))
