@@ -615,6 +615,10 @@ def get_args() -> ap.Namespace:
     argparser.add_argument("-f", "--fast", 
                            action='store_true', 
                            help="Use this flag to use the fast (vectorised) algorithm.")
+    argparser.add_argument("-a", "--aa-kernel-size", 
+                           type=int, 
+                           default=7, 
+                           help="The anti-aliasing kernel size")
     args = argparser.parse_args()
     return args
 
@@ -705,4 +709,4 @@ if __name__ == "__main__":
     # print(kernel_max, kernel_min)
 
 
-    adaptive_convolutional_smearing(pcfGD, visGD, echo_counter=True, anti_aliasing_kernel_size=7)
+    adaptive_convolutional_smearing(pcfGD, visGD, echo_counter=True, anti_aliasing_kernel_size=args.aa_kernel_size)
