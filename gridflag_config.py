@@ -290,7 +290,7 @@ def adaptive_convolutional_smearing(initial_pcf_grid_array: np.ndarray,
         uv-plane is set to be negative to retain the hermitian property of the images
     """
     # Create the output array
-    smeared_grid = np.zeros(np.shape(initial_pcf_grid_array))
+    smeared_grid = np.zeros(np.shape(initial_pcf_grid_array),dtype=np.complex64)
 
     # Generate a matrix with the kernel sizes
     # pcf_kernel_sizes = np.fabs(np.divide(pcf_imag,pcf_real, where=pcf_real!=0))
@@ -318,28 +318,39 @@ def adaptive_convolutional_smearing(initial_pcf_grid_array: np.ndarray,
     
 
     # Perform the operations by channel
-    for i in range(0,np.shape(initial_pcf_grid_array)[0]):
+    if args.debug:
+        end_of_range=1
+    else:
+        end_of_range = initial_pcf_grid_array.shape[0]
+    for i in range(0,end_of_range):
+        
+        # fft first? The C++ code applies an fft first and then iffts the data at the end.
+        # pcf_fft = np.fft.fftshift(np.fft.fft2(initial_pcf_grid_array[i, 0]))
+        pcf_fft = initial_pcf_grid_array[i, 0]
         
         # do the smearing
         if args.fast:
-            smeared_grid[i,0,...] = smearing_fast(initial_pcf_grid_array[i, 0],
+            smeared_grid[i,0,...] = smearing_fast(pcf_fft,
                                                   pcf_kernel_sizes[i,0],
                                                   boxWidth[i])
         else:
-            smeared_grid[i,0,...] = smearing_slow(initial_pcf_grid_array[i,0],
+            smeared_grid[i,0,...] = smearing_slow(pcf_fft,
                                                   pcf_kernel_sizes[i,0], 
                                                   boxWidth[i],
                                                   echo_counter)
+            
+        #perform ifft
+        # smeared_grid[i, 0, ...] = np.fft.ifft2(np.fft.ifftshift(smeared_grid[i,0, ...]))
         
         # Now check if the resultant grid occupancy is the same as the example grid
 
         # Plot smeared grid
-        im = plt.matshow(smeared_grid[i,0,...], cmap='gray_r')
+        im = plt.matshow(np.abs(smeared_grid[i,0,...]), cmap='gray_r')
         plt.colorbar(im)
         plt.show()
 
         reference_grid_occupancy = np.where(np.abs(reference_grid_array[i,0,...]) > 0.0, 1, 0)
-        smeared_pcf_grid_occupancy = copy.deepcopy(np.where(smeared_grid[i,0,...] > 0.0, 2, 0))
+        smeared_pcf_grid_occupancy = copy.deepcopy(np.where(np.abs(smeared_grid[i,0,...]) > 0.0, 2, 0))
 
         # I used to do this for testing, but should be better to return the smeared grid maybe...
         diff_grid = np.subtract(reference_grid_occupancy,smeared_pcf_grid_occupancy)
@@ -619,6 +630,9 @@ def get_args() -> ap.Namespace:
                            type=int, 
                            default=7, 
                            help="The anti-aliasing kernel size")
+    argparser.add_argument("-e","--debug", 
+                           action="store_true",
+                           help="Use this flag for debugging, NOTE: this will only process on channel and will not produce any output.")
     args = argparser.parse_args()
     return args
 
