@@ -323,6 +323,7 @@ def adaptive_convolutional_smearing(initial_pcf_grid_array: np.ndarray,
     else:
         end_of_range = initial_pcf_grid_array.shape[0]
     for i in range(0,end_of_range):
+        logger.info("Running channel {} of {}".format(i, end_of_range))
         
         # fft first? The C++ code applies an fft first and then iffts the data at the end.
         # pcf_fft = np.fft.fftshift(np.fft.fft2(initial_pcf_grid_array[i, 0]))
@@ -343,23 +344,29 @@ def adaptive_convolutional_smearing(initial_pcf_grid_array: np.ndarray,
         # smeared_grid[i, 0, ...] = np.fft.ifft2(np.fft.ifftshift(smeared_grid[i,0, ...]))
         
         # Now check if the resultant grid occupancy is the same as the example grid
+        if args.plot_occupancy:
+            # Plot smeared grid
+            im = plt.matshow(np.abs(smeared_grid[i,0,...]), cmap='gray_r')
+            plt.colorbar(im)
+            plt.show()
 
-        # Plot smeared grid
-        im = plt.matshow(np.abs(smeared_grid[i,0,...]), cmap='gray_r')
-        plt.colorbar(im)
-        plt.show()
+            reference_grid_occupancy = np.where(np.abs(reference_grid_array[i,0,...]) > 0.0, 1, 0)
+            smeared_pcf_grid_occupancy = copy.deepcopy(np.where(np.abs(smeared_grid[i,0,...]) > 0.0, 2, 0))
 
-        reference_grid_occupancy = np.where(np.abs(reference_grid_array[i,0,...]) > 0.0, 1, 0)
-        smeared_pcf_grid_occupancy = copy.deepcopy(np.where(np.abs(smeared_grid[i,0,...]) > 0.0, 2, 0))
+            # I used to do this for testing, but should be better to return the smeared grid maybe...
+            diff_grid = np.subtract(reference_grid_occupancy,smeared_pcf_grid_occupancy)
 
-        # I used to do this for testing, but should be better to return the smeared grid maybe...
-        diff_grid = np.subtract(reference_grid_occupancy,smeared_pcf_grid_occupancy)
-
-        im = plt.matshow(diff_grid, cmap='Set3')
-        plt.colorbar(im)
-        plt.show()        
-
-
+            im = plt.matshow(diff_grid, cmap='Set3')
+            plt.colorbar(im)
+            plt.show()
+    if args.write is not None:
+        logger.info(f"writing the smeared grid to {args.write}")
+        write_smeared_npy(smeared_grid)
+    if args.plot_statistics is not None:
+        logger.info(f"creating statistics plots and saving to {args.plot_statistics}")
+        plot_statistics(reference_grid_array, smeared_grid, initial_pcf_grid_array)
+        
+        
 def smearing_slow(pcf: np.ndarray, pcf_kernel_sizes: np.ndarray, boxWidth: np.ndarray, echo_counter: bool) -> np.ndarray:
     """The core algorithm (non-vectorised) performing the the adaptive convolutional smearing used
     to create the Wiener-filters for weighting, and basically to estimate the
@@ -633,9 +640,90 @@ def get_args() -> ap.Namespace:
     argparser.add_argument("-e","--debug", 
                            action="store_true",
                            help="Use this flag for debugging, NOTE: this will only process on channel and will not produce any output.")
+    argparser.add_argument("-w", "--write", 
+                           help="write out the smeared grid to the desired filepath.")
+    argparser.add_argument("-p", "--plot_occupancy", 
+                           action='store_true', 
+                           help="Plot the occupancy of the smeared grid when compared to the visibility grid, this will be done for every channel")
+    argparser.add_argument("-s", "--plot_statistics",
+                           help="The file to which to save the statistics plots, these plots will not be generated if this is not set.")
     args = argparser.parse_args()
     return args
 
+
+def write_smeared_npy(smeared_grid: np.ndarray) -> None:
+    """Writes the grid to a .npy file
+    
+    Parameters:
+    -----------
+    smeared_grid: np.ndarray
+        The array to write out
+    """
+    
+    np.save(args.write, smeared_grid)
+    
+
+def plot_hist(data: np.ndarray, nbins: int=500, **kwargs) -> None:
+    """Plots the required histogram
+    
+    Parameters:
+    -----------
+    data: np.ndarray
+        The data to create a histogram from.
+    nbins: int
+        The number of bins (default=500)"""
+    
+    if kwargs['axis'] is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        kwargs['axis'] = ax
+    if kwargs['color'] is None:
+        kwargs['color'] = 'blue'
+    if kwargs['xlabel'] is None:
+        kwargs['xlabel'] = 'values'
+
+    mask = np.isfinite(data)
+    hist, xvals = np.histogram(data[mask], nbins)
+    xvals = (xvals[1:]+xvals[:1])/2
+    
+    kwargs['axis'].semilogy(xvals, hist, '.', color=kwargs['color'], markeredgecolor='k')
+    kwargs['axis'].set_ylabel('counts')
+    kwargs['axis'].set_xlabel(kwargs['xlabel'], color=kwargs['color'])
+    kwargs['axis'].tick_params(axis='x', labelcolor=kwargs['color'])
+    
+
+
+def plot_statistics(vis_grid: np.ndarray, smeared_grid: np.ndarray, pcf_grid: np.ndarray) -> None:
+    """Creates a histogram of abs(vis/real(pcf)) and 
+    std_dev(std(abs(vis/real(pcf)))) down the frequency axis. The pcf is 
+    additionally replaced with the smeared grid for comparison.
+    
+    Parameters:
+    -----------
+    vis_grid: np.ndarray
+        The visibility grid
+    smeared_grid: np.ndarray
+        The newly created smeared pcf grid
+    pcf_grid: np.ndarray
+        The old pcf grid, for comparison"""
+    norm_vis = np.abs(vis_grid/smeared_grid.real)
+    norm_vis_std = np.std(norm_vis, axis=(0,1), where=np.isfinite(norm_vis))
+    
+    vis = np.abs(vis_grid/pcf_grid.real)
+    vis_std = np.std(vis, axis=(0,1), where=np.isfinite(vis))
+    
+    fig = plt.figure(figsize=(10,5))
+    ax = fig.subplots(1,2)
+    
+    plot_hist(norm_vis, axis=ax[0], color='blue', xlabel='normalised values')
+    plot_hist(vis, axis=ax[0].twiny(), color='red', xlabel='original values')
+    plot_hist(norm_vis_std, axis=ax[1], color='blue', xlabel='normalised std values')
+    plot_hist(vis_std, axis=ax[1].twiny(), color='red', xlabel='original std values')
+    
+    fig.savefig(args.plot_statistics)
+    
+    
+    
 
 # TO DO: add a put_data_to_cim function which writes a 4D array to an image ondisc
 # The plan is: read in the images and create the final images (vis, psf) with
