@@ -322,43 +322,53 @@ def adaptive_convolutional_smearing(initial_pcf_grid_array: np.ndarray,
         end_of_range=1
     else:
         end_of_range = initial_pcf_grid_array.shape[0]
-    for i in range(0,end_of_range):
-        logger.info("Running channel {} of {}".format(i, end_of_range))
-        
-        # fft first? The C++ code applies an fft first and then iffts the data at the end.
-        # pcf_fft = np.fft.fftshift(np.fft.fft2(initial_pcf_grid_array[i, 0]))
-        pcf_fft = initial_pcf_grid_array[i, 0]
-        
-        # do the smearing
-        if args.fast:
-            smeared_grid[i,0,...] = smearing_fast(pcf_fft,
-                                                  pcf_kernel_sizes[i,0],
-                                                  boxWidth[i])
-        else:
-            smeared_grid[i,0,...] = smearing_slow(pcf_fft,
-                                                  pcf_kernel_sizes[i,0], 
-                                                  boxWidth[i],
-                                                  echo_counter)
+    if args.parallel:
+        import multiprocessing as mp
+        ncores = mp.cpu_count()
+        with mp.Pool(ncores) as pool:
+            result = pool.starmap(smearing_fast, [(initial_pcf_grid_array[i,0], 
+                                                   pcf_kernel_sizes[i,0], 
+                                                   boxWidth[i], i) for i in range(0, end_of_range)])
+            for i, res in enumerate(result):
+                smeared_grid[i, 0, ...] = res
+    else:
+        for i in range(0,end_of_range):
+            logger.info("Running channel {} of {}".format(i, end_of_range))
             
-        #perform ifft
-        # smeared_grid[i, 0, ...] = np.fft.ifft2(np.fft.ifftshift(smeared_grid[i,0, ...]))
-        
-        # Now check if the resultant grid occupancy is the same as the example grid
-        if args.plot_occupancy:
-            # Plot smeared grid
-            im = plt.matshow(np.abs(smeared_grid[i,0,...]), cmap='gray_r')
-            plt.colorbar(im)
-            plt.show()
+            # fft first? The C++ code applies an fft first and then iffts the data at the end.
+            # pcf_fft = np.fft.fftshift(np.fft.fft2(initial_pcf_grid_array[i, 0]))
+            pcf_fft = initial_pcf_grid_array[i, 0]
+            
+            # do the smearing
+            if args.fast:
+                smeared_grid[i,0,...] = smearing_fast(pcf_fft,
+                                                    pcf_kernel_sizes[i,0],
+                                                    boxWidth[i])
+            else:
+                smeared_grid[i,0,...] = smearing_slow(pcf_fft,
+                                                    pcf_kernel_sizes[i,0], 
+                                                    boxWidth[i],
+                                                    echo_counter)
+                
+            #perform ifft
+            # smeared_grid[i, 0, ...] = np.fft.ifft2(np.fft.ifftshift(smeared_grid[i,0, ...]))
+            
+            # Now check if the resultant grid occupancy is the same as the example grid
+            if args.plot_occupancy:
+                # Plot smeared grid
+                im = plt.matshow(np.abs(smeared_grid[i,0,...]), cmap='gray_r')
+                plt.colorbar(im)
+                plt.show()
 
-            reference_grid_occupancy = np.where(np.abs(reference_grid_array[i,0,...]) > 0.0, 1, 0)
-            smeared_pcf_grid_occupancy = copy.deepcopy(np.where(np.abs(smeared_grid[i,0,...]) > 0.0, 2, 0))
+                reference_grid_occupancy = np.where(np.abs(reference_grid_array[i,0,...]) > 0.0, 1, 0)
+                smeared_pcf_grid_occupancy = copy.deepcopy(np.where(np.abs(smeared_grid[i,0,...]) > 0.0, 2, 0))
 
-            # I used to do this for testing, but should be better to return the smeared grid maybe...
-            diff_grid = np.subtract(reference_grid_occupancy,smeared_pcf_grid_occupancy)
+                # I used to do this for testing, but should be better to return the smeared grid maybe...
+                diff_grid = np.subtract(reference_grid_occupancy,smeared_pcf_grid_occupancy)
 
-            im = plt.matshow(diff_grid, cmap='Set3')
-            plt.colorbar(im)
-            plt.show()
+                im = plt.matshow(diff_grid, cmap='Set3')
+                plt.colorbar(im)
+                plt.show()
     if args.write is not None:
         logger.info(f"writing the smeared grid to {args.write}")
         write_smeared_npy(smeared_grid)
@@ -509,7 +519,7 @@ def smearing_slow(pcf: np.ndarray, pcf_kernel_sizes: np.ndarray, boxWidth: np.nd
     return smeared_grid
 
     
-def smearing_fast(pcf: np.ndarray, pcf_kernel_sizes: np.ndarray, box_width: np.ndarray):
+def smearing_fast(pcf: np.ndarray, pcf_kernel_sizes: np.ndarray, box_width: np.ndarray, channel: int=None):
     """The core algorithm (vectorised) performing the the adaptive convolutional smearing used
     to create the Wiener-filters for weighting, and basically to estimate the
     smeared weight-density distribution.
@@ -522,12 +532,15 @@ def smearing_fast(pcf: np.ndarray, pcf_kernel_sizes: np.ndarray, box_width: np.n
         The corrected kernel sizes for the pcf
     boxWidth: np.ndarray
         A single valued array with the current channel's box width
+    channel: int
+        the channel number (primarily for use during mp)
         
     Returns
     -------
     smeared_grid: np.ndarray
         The smeared grid for a single channel
     """
+    logger.info(f"running channel {channel}")
     smeared_grid = np.zeros(pcf.shape)
     xrange = np.array([2*box_width/2, pcf.shape[0] - 2*box_width/2], dtype=np.int32)
     yrange = np.array([2*box_width/2, pcf.shape[1] - 2*box_width/2], dtype=np.int32)
@@ -642,11 +655,14 @@ def get_args() -> ap.Namespace:
                            help="Use this flag for debugging, NOTE: this will only process on channel and will not produce any output.")
     argparser.add_argument("-w", "--write", 
                            help="write out the smeared grid to the desired filepath.")
-    argparser.add_argument("-p", "--plot_occupancy", 
+    argparser.add_argument("-o", "--plot_occupancy", 
                            action='store_true', 
                            help="Plot the occupancy of the smeared grid when compared to the visibility grid, this will be done for every channel")
     argparser.add_argument("-s", "--plot_statistics",
                            help="The file to which to save the statistics plots, these plots will not be generated if this is not set.")
+    argparser.add_argument("-P", "--parallel",
+                           action='store_true',
+                           help="Use multiprocessing to parallelise on each channel")
     args = argparser.parse_args()
     return args
 
