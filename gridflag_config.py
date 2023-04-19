@@ -684,7 +684,7 @@ def plot_hist(data: np.ndarray, nbins: int=500, **kwargs) -> None:
 
     mask = np.isfinite(data)
     hist, xvals = np.histogram(data[mask], nbins)
-    xvals = (xvals[1:]+xvals[:1])/2
+    xvals = (xvals[1:]+xvals[:-1])/2
     
     kwargs['axis'].semilogy(xvals, hist, '.', color=kwargs['color'], markeredgecolor='k')
     kwargs['axis'].set_ylabel('counts')
