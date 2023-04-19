@@ -1,0 +1,31 @@
+# This file contains an example of the plotting configuration used for multigrid_stats.py
+
+plots:
+  - label: SB10991
+    cubes:
+      visgrid: visgrid.range1_SB10991.dumpgrid
+      pcfgrid: pcfgrid.range1_SB10991.dumpgrid
+  - label: SB10994
+    cubes:
+      visgrid: visgrid.range1_SB10994.dumpgrid
+      pcfgrid: pcfgrid.range1_SB10994.dumpgrid
+  - label: SB11000
+    cubes:
+      visgrid: visgrid.range1_SB11000.dumpgrid
+      pcfgrid: pcfgrid.range1_SB11000.dumpgrid
+  - label: SB11003
+    cubes:
+      visgrid: visgrid.range1_SB11003.dumpgrid
+      pcfgrid: pcfgrid.range1_SB11003.dumpgrid
+  - label: SB11006
+    cubes:
+      visgrid: visgrid.range1_SB11006.dumpgrid
+      pcfgrid: pcfgrid.range1_SB11006.dumpgrid
+  - label: SB11010
+    cubes:
+      visgrid: visgrid.range1_SB11010.dumpgrid
+      pcfgrid: pcfgrid.range1_SB11010.dumpgrid
+  - label: SB11026
+    cubes:
+      visgrid: visgrid.range1_SB11026.dumpgrid
+      pcfgrid: pcfgrid.range1_SB11026.dumpgrid  
