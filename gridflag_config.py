@@ -322,9 +322,10 @@ def adaptive_convolutional_smearing(initial_pcf_grid_array: np.ndarray,
         end_of_range=1
     else:
         end_of_range = initial_pcf_grid_array.shape[0]
-    if args.parallel:
+    if args.parallel is not None:
         import multiprocessing as mp
-        ncores = mp.cpu_count()
+        ncores = min([mp.cpu_count(), args.parallel])
+        logger.info(f"using {ncores} cores out of {mp.cpu_count()} available")
         with mp.Pool(ncores) as pool:
             result = pool.starmap(smearing_fast, [(initial_pcf_grid_array[i,0], 
                                                    pcf_kernel_sizes[i,0], 
@@ -541,7 +542,7 @@ def smearing_fast(pcf: np.ndarray, pcf_kernel_sizes: np.ndarray, box_width: np.n
         The smeared grid for a single channel
     """
     logger.info(f"running channel {channel}")
-    smeared_grid = np.zeros(pcf.shape)
+    smeared_grid = np.zeros(pcf.shape, dtype=np.complex64)
     xrange = np.array([2*box_width/2, pcf.shape[0] - 2*box_width/2], dtype=np.int32)
     yrange = np.array([2*box_width/2, pcf.shape[1] - 2*box_width/2], dtype=np.int32)
     x,y = np.mgrid[xrange[0]:xrange[1],yrange[0]:yrange[1]]
@@ -558,11 +559,11 @@ def smearing_fast(pcf: np.ndarray, pcf_kernel_sizes: np.ndarray, box_width: np.n
     kernelW = np.fmax(kernelW, max_filter[xrange[0,0]:xrange[1,0],yrange[0,0]:yrange[1,0]])
     mask = kernelW > 0
     d2mask = mask
-    regionW = np.zeros(kernelW.shape)
+    regionW = np.zeros(kernelW.shape, dtype=np.int32)
     regionW[mask] = 1 + 2*(kernelW[mask]-1)
-    local_radius_sq = np.zeros(kernelW.shape)
+    local_radius_sq = np.zeros(kernelW.shape, dtype=np.float32)
     local_radius_sq[mask] = 0.25 * kernelW[mask]**2
-    region_radius_sq = np.zeros(regionW.shape)
+    region_radius_sq = np.zeros(regionW.shape, dtype=np.float32)
     region_radius_sq[mask] = 0.25 * regionW[mask]**2
     # val
     rx,ry = np.mgrid[0:np.max(regionW[mask]), 0:np.max(regionW[mask])]
@@ -572,7 +573,7 @@ def smearing_fast(pcf: np.ndarray, pcf_kernel_sizes: np.ndarray, box_width: np.n
     yb[mask, :,:] = ((y[mask]-regionW[mask]/2)[...,None,None]+ry[None,None,...]).astype(np.int32)
     mask = np.bitwise_and(mask[..., None, None], xb < (x-1+regionW/2)[..., None, None])
     mask = np.bitwise_and(mask, yb < (y-1+regionW/2)[..., None, None])
-    val = np.zeros((x.shape[0], y.shape[1], rx.shape[0], ry.shape[1]))
+    val = np.zeros((x.shape[0], y.shape[1], rx.shape[0], ry.shape[1]), dtype=np.float32)
     val[mask] = pcf[xb[mask], yb[mask]].real
     mask = np.bitwise_and(mask, val > 0)
     # rsq (These had to be split up so my kernel didn't die from memory saturation)
@@ -661,7 +662,7 @@ def get_args() -> ap.Namespace:
     argparser.add_argument("-s", "--plot_statistics",
                            help="The file to which to save the statistics plots, these plots will not be generated if this is not set.")
     argparser.add_argument("-P", "--parallel",
-                           action='store_true',
+                           type=int,
                            help="Use multiprocessing to parallelise on each channel")
     args = argparser.parse_args()
     return args
