@@ -1,31 +1,15 @@
 # This file contains an example of the plotting configuration used for multigrid_stats.py
 
 plots:
-  - label: SB10991
+  - label: range 1 (no RFI no source)
     cubes:
-      visgrid: visgrid.range1_SB10991.dumpgrid
-      pcfgrid: pcfgrid.range1_SB10991.dumpgrid
-  - label: SB10994
+      visgrid: rangeA/visgrid.rangeA6.dumpgrid
+      pcfgrid: rangeA/pcfgrid.rangeA6.dumpgrid
+  - label: range 2 (RFI)
     cubes:
-      visgrid: visgrid.range1_SB10994.dumpgrid
-      pcfgrid: pcfgrid.range1_SB10994.dumpgrid
-  - label: SB11000
+      visgrid: rangeB/visgrid.rangeB6.dumpgrid
+      pcfgrid: rangeB/pcfgrid.rangeB6.dumpgrid
+  - label: range 3 (source with no RFI)
     cubes:
-      visgrid: visgrid.range1_SB11000.dumpgrid
-      pcfgrid: pcfgrid.range1_SB11000.dumpgrid
-  - label: SB11003
-    cubes:
-      visgrid: visgrid.range1_SB11003.dumpgrid
-      pcfgrid: pcfgrid.range1_SB11003.dumpgrid
-  - label: SB11006
-    cubes:
-      visgrid: visgrid.range1_SB11006.dumpgrid
-      pcfgrid: pcfgrid.range1_SB11006.dumpgrid
-  - label: SB11010
-    cubes:
-      visgrid: visgrid.range1_SB11010.dumpgrid
-      pcfgrid: pcfgrid.range1_SB11010.dumpgrid
-  - label: SB11026
-    cubes:
-      visgrid: visgrid.range1_SB11026.dumpgrid
-      pcfgrid: pcfgrid.range1_SB11026.dumpgrid  
+      visgrid: rangeC/visgrid.rangeC6.dumpgrid
+      pcfgrid: rangeC/pcfgrid.rangeC6.dumpgrid
